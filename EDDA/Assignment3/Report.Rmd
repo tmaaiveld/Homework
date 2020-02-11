@@ -1,0 +1,516 @@
+---
+title: "Assignment 3"
+author: "Tommy Maaiveld, Krishnakanth Sasi, Halil Kaan Kara, Group 6"
+output: pdf_document
+---
+
+```{r setup, include=FALSE, }
+knitr::opts_chunk$set(echo = TRUE)
+
+library(lme4)
+```
+
+
+## Introduction
+This document describes the solutions found and implemented for the exercises of assignment 3. Exercises can be found in their corresponding sections. This document is created by Rmd, and figure captions are omitted since it changes the structure of the document in a bad way that makes it hard to follow
+
+## Question 1
+This question investigates the effect of humidity and temperature on time to decay for a bread loaf. There are 18 slices of bread assigned to 6 different kind of treatments, based on 3 different level of temperature and 2 different level of humidity.
+Data is analysed with a 2 way experiment with interactions.
+
+### Section 1
+Randomization is executed using *cbind()* function, repeating each of the factors to match the total experimental units.
+
+```{r, fig.align='center', echo=FALSE}
+bread = as.character(c(1:18))
+temperatures = c("warm", "intermediate", "cold")
+humidity = c("dry", "wet")
+design = cbind(data.frame("slice" = bread), data.frame("temperatures" = sample(rep(temperatures, each=6))), data.frame("humidity" = sample(rep(humidity, each=9))))
+print(design)
+```
+
+### Section 2
+```{r, fig.align='center', echo=FALSE}
+study_data = read.table(file = "./data/bread.txt", header = TRUE)
+
+boxplot(hours~environment, data = study_data, xlab = "Temperature", ylab = "Hours to decay", main = "Box plot of hours vs temperature")
+boxplot(hours~humidity, data = study_data, xlab = "Humidity", ylab = "Hours to decay")
+
+interaction.plot(study_data$environment, study_data$humidity, study_data$hours, trace.label = "Humidity", xlab = "Temperature", ylab = "Mean of hours to decay ")
+interaction.plot(study_data$humidity, study_data$environment, study_data$hours, trace.label = "Temperature", xlab = "Humidity", ylab = "Mean of hours to decay ")
+
+
+
+
+```
+
+### Section 3
+```{r, fig.align="centre",echo=FALSE}
+#analysis of variance
+study_data$environment = as.factor(study_data$environment)
+study_data$humidity = as.factor((study_data$humidity))
+study_data_aov = lm(hours~humidity*environment, data=study_data)
+# results of aov
+print(anova(study_data_aov))
+
+```
+As can be seen, P value of interaction component between the factors is < 0.05. So the interaction is statistically significant. This means that the relationship between environment and decay hours depends on the humidity.
+
+### Section 4
+
+Estimating which of the factors has greater main effect is not be relevant here because of significant interaction between the factors. We should be able to ignore the interaction effects for an additive model generation and mean estimation, which isn't possible in this case. Because of the interaction, one of the factors might be augumenting the effects of another, thereby skewing the results. Therefore this is not a good question to ask.
+
+### Section 5
+```{r, fig.align='centre', echo=FALSE}
+#Diagnostics
+qqnorm(residuals(study_data_aov), )
+```
+
+Normality is present. There are two outliers present however, removing them would give better results.
+```{r, fig.align='centre', echo=FALSE}
+plot(fitted(study_data_aov),residuals(study_data_aov))
+```
+The residual spread seems homogenous except for two fitted points around 230-240. Removing these outliers would produce better results. 
+
+As can be seen from the above two plots there are two outliers.
+
+
+
+## Question 2
+
+### Section 1
+
+```{r, fig.align='center', echo=FALSE}
+search <- read.table("data/search.txt")
+```
+
+```{r,fig.align='center'}
+I=3; B=5; N=1
+for (i in 1:B) print((sample(1:(N*I)+(i-1)*3)))
+```
+
+Each row represents a skill block. The students have been numbered in ascending order (1,2,3 in the first skill group, 4,5,6 in the second, etc.). Each column represents an interface assignment for the three students in that category. 
+
+### Section 2 
+
+```{r,fig.align='center'}
+attach(search)
+par(mfrow=c(1,2))
+boxplot(time~skill); boxplot(time~interface)
+interaction.plot(interface, skill,time)
+interaction.plot(skill,interface,time)
+```
+The interaction plot shows some non-parallel increases for skill - interface 3 was faster than interface 2 for skill block 4, and interfaces 1 and 2 scored equally for skill block 1.
+
+### Section 3
+
+```{r,fig.align='center'}
+lmsearch <- lm(time~interface+skill,data=search)
+searchaov <- anova(lmsearch)
+
+cat(c("p-value:", searchaov$`Pr(>F)`[[1]]))
+```
+The p-value for an ANOVA test is $>0.05$, which indicates that there is significant evidence to refute the null hypothesis. The search time does not seem to be the same for all interfaces.
+
+### Section 4
+
+
+### Section 5
+
+```{r, fig.align='center'}
+par(mfrow=c(1,2))
+qqnorm(residuals(lmsearch))
+plot(fitted(lmsearch),residuals(lmsearch),main='Scatterplot of residuals')
+```
+The QQ-plot seems somewhat curved; the scatterplot looks normal. 
+
+### Section 6 
+
+```{r, fig.align='center'}
+friedman.test(time,interface, skill)
+```
+
+The p-value for no treatment effect is `r round(friedman.test(time,interface, skill)[[3]],3)`. The p-value is smaller than $\alpha$, so the null should be rejected. There is an effect of interface present. 
+
+### Section 7
+
+```{r, fig.align='center'}
+searchaov2 <- lm(time~interface)
+anova(searchaov2)
+par(mfrow=c(1,1)); qqnorm(residuals(searchaov2))
+```
+
+Although there are not that many data points, the randomized block design used here ensures that each interface is attempted by exactly one student of each skill level. Thus, the variances in each population of students trying an interface should be roughly equivalent. The qq-plot above shows that the residuals are normally distributed, which means that the assumption of the normality of the populations is not necessarily untrue.
+
+## Question 3
+This question investigates the effect of a particular kind of starter on the yogurt formation. The explanatory factors are starter, position and batch. The data is analysed in a 3 way experiment without considering interactions.
+
+### Section 1
+```{r, fig.align='center', echo=FALSE}
+study_data1 = read.table(file = "./data/cream.txt", header = TRUE)
+
+# 3 way Anova
+study_data1$batch = as.factor(study_data1$batch)
+study_data1$position = as.factor(study_data1$position)
+study_data1$starter = as.factor(study_data1$starter)
+study_data1_aov = lm(acidity~starter+batch+position, data=study_data1)
+# results of aov
+anova(study_data1_aov)
+print(summary(study_data1_aov))
+```
+Effects of starter 2 and 4 seem statistically significant here. 
+
+### Section 2
+```{r, fig.align='center', echo=FALSE}
+# mean comparisons
+library(multcomp)
+data_aov = lm(acidity~starter+batch+position, data = study_data1)
+mean_comparison = glht(data_aov, linfct =mcp(starter="Tukey"))
+print(summary(mean_comparison))
+```
+As can be seen from the results, starter 4 seems to give significant different from other starters, whereas none of the other starters seems to have a significant pairwise difference in their means. This seems to show that only starter 4 has a significant main effect on the lactation of the yogurt.
+
+### Section 4
+```{r, fig.align='center', echo=FALSE}
+# Showing the table of confidence interval for mean diff of main effects of starter with 95% confidence
+print(confint(mean_comparison))
+```
+
+From the result, we can see that starters 4-1, 4-2, 4-3,  and 4-5 do not contain zero in their confidence intevals, and henceforth has significant effect on the response variable.
+
+
+## Question 4
+
+```{r, fig.align='center', echo=FALSE}
+par(mfrow=c(1,1))
+cow <- read.table("data/cow.txt")
+```
+
+### Section 1
+
+```{r, fig.align='center'}
+cow$id <- factor(cow$id)
+cowlm <- lm(milk~treatment+per+id,data=cow)
+cat(anova(cowlm)[1,5])
+```
+The p-value for treatment is `r round(anova(cowlm)[1,5],3)`. Therefore, this model seems to indicate that the feed treatment does not affect the volume of milk produced.
+       
+### Section 2
+
+```{r, fig.align='center'}
+cowlmsumm <- summary(cowlm)
+head(cowlmsumm$coefficients, n=2)
+```
+The milk yield of treatment B is estimated to be `r round(cowlmsumm$coefficients[2,1],2)*-1` lower than that of treatment A.
+
+### Section 3
+
+```{r, fig.align='center'}
+cowlmer <- lmer(milk~treatment+order+per+(1|id), data=cow, REML=FALSE)
+cowlmersumm <- summary(cowlmer)
+```
+
+```{r, fig.align='center', echo=FALSE}
+cat("Fixed effects")
+head(cowlmersumm$coefficients,n=3)
+```
+
+The table above shows the fixed effects output of the model. 
+
+```{r, fig.align='center', echo=TRUE}
+cowlmer1 <- lmer(milk~order+per+(1|id), data=cow, REML=FALSE)
+cowlmeraov <- anova(cowlmer1,cowlmer)
+```
+
+p-value of ANOVA with/without treatment variable:
+
+```{r, fig.align='center', include=TRUE}
+pval <- cowlmeraov$`Pr(>Chisq)`[2]
+pval
+```
+
+By performing an ANOVA test between a linear model fitted including the treatment factor to one not including the treatment factor, a p-value of `r round(pval,3)` is obtained. There is still no reason to reject the null hypothesis, but the result is different from that in 4.1. The results under 'Fixed effects' are identical to those obtained in 4.2.
+      
+### Section 4
+
+```{r, fig.align='center'}
+attach(cow)
+cowtest <- t.test(milk[treatment=="A"],milk[treatment=="B"],paired=TRUE)
+cowtest$estimate
+```
+
+Performing an ANOVA test on these samples:
+
+```{r, fig.align='center'}
+aovcow <- lm(milk~treatment+id,data=cow)
+
+aovcowsumm <- summary(aovcow)
+head(aovcowsumm$coefficients,n=2)
+```
+
+Performing a paired t-test yields an equivalent result to a repeated measures experiment where excheangability is assumed. Its result is incompatible with that of 4.1, since that test does not assume there are no time effects, learning effects or dissimilar subjects affecting results. In this experiment, these assumptions do not seem safe, meaning a crossover design is more appealing. This paired t-test does not produce a valid test for difference in milk production.
+      
+## Question 5
+
+```{r, fig.align='center', echo=FALSE}
+nausea.table <- read.table("data/nauseatable.txt")
+```
+
+### Section 1
+
+```{r, fig.align='center'}
+nausea <- c(rep(1,nausea.table[1,2]), rep(0,nausea.table[1,1]),
+            rep(1,nausea.table[2,2]), rep(0,nausea.table[2,1]),
+            rep(1,nausea.table[3,2]), rep(0,nausea.table[3,1]))
+
+medicin <- factor(rep(1:3, c((nausea.table[1,1]+nausea.table[1,2]),
+                             (nausea.table[2,1]+nausea.table[2,2]),
+                             (nausea.table[3,1]+nausea.table[3,2]))), 
+                  labels=c("chlor","pent100","pent150"))
+
+nausea.frame <- data.frame(nausea,medicin)
+```
+
+### Section 2
+
+```{r, fig.align='center'}
+xtabs(~medicin+nausea)
+```
+
+This representation is similar to the original nausea.table layout.
+
+### Section 3
+
+```{r, fig.align='center', echo=FALSE, include=FALSE}
+attach(nausea.frame)
+```
+
+```{r, fig.align='center'}
+B <- 1000
+tstar <- numeric(B)
+for(i in 1:B)
+{
+  medicinstar <- sample(medicin) 
+  tstar[i] <- chisq.test(xtabs(~medicinstar+nausea))[[1]]
+}
+
+myt <- chisq.test(xtabs(~medicin+nausea))[[1]]
+
+hist(tstar)
+abline(v=myt, col='red')
+
+pr <- sum(tstar>myt)/B
+pr
+```
+
+The test statistic obtained for the labeling in the experiment is higher than 95% of the test statistics for the permuted labels. The p-value is lower than $\alpha$ (`r round(pr,3)`), which could warrant a rejection of the null hypothesis. This indicates the medicines do not work equally well against nausea.
+
+### Section 4
+
+```{r, fig.align='center', echo=FALSE}
+chisq.test(xtabs(~medicin+nausea))[[3]]
+```
+
+The p-value is almost equal (`r round(chisq.test(xtabs(~medicin+nausea))[[3]],3)`) to that of the permutation test in 5.3 (0.039). Both tests detect a relationship between the variables 'type of drug' and 'incidence of nausea', making independence unlikely.
+      
+## Question 6
+This question investigates which explanatory variables are appropriate for a linear regression model where oxidant is the response variable.
+
+### Section 1
+Pair-wise scatter plot of all variables except day and id can be seen below. This figure seems to indicate that variables wind and temperature show some linearity against oxidant. Also, wind and temperature pair scatter plot points out that the possibility of colinearity. This may be a problem since we are interested in independent variables to prevent problems such as overfitting.
+
+```{r, fig.align='center', echo=FALSE}
+airPollution = read.table("./data/airpollution.txt", header = TRUE)
+pairs(~ wind + temperature + humidity + insolation + oxidant, data = airPollution)
+```
+
+### Section 2
+
+The figure below shows 4 different simple regression models as the starting point for step-up method of multiple regression. As said before, wind and temperature seem to be highly linear with oxidant. Humidity seems to be somewhat linear to oxidant but insolation seems to be constant for all variable pairs.
+
+```{r, fig.align='center', echo=FALSE}
+model1 = lm(oxidant ~ wind, data = airPollution)
+model2 = lm(oxidant ~ temperature, data = airPollution)
+model3 = lm(oxidant ~ humidity, data = airPollution)
+model4 = lm(oxidant ~ insolation, data = airPollution)
+
+par(mfrow=c(2,2))
+plot(oxidant ~ wind, data = airPollution); abline(model1)
+plot(oxidant ~ temperature, data = airPollution); abline(model2)
+plot(oxidant ~ humidity, data = airPollution); abline(model3)
+plot(oxidant ~ insolation, data = airPollution); abline(model1)
+
+sum1 = summary(model1)
+sum2 = summary(model2)
+sum3 = summary(model3)
+sum4 = summary(model4)
+```
+
+For the best starting point, we looked at the $R^2$ of all 4 models. From left to right, we got `r round(sum1$r.squared, 3)`, `r round(sum2$r.squared, 3)`, `r round(sum3$r.squared, 3)`, `r round(sum4$r.squared, 3)`. Since the top-left model which has wind as the only explanatory variable, has the highest $R^2$ value, we start with it.
+
+```{r, echo=FALSE}
+stepUpModel1 = lm(oxidant ~ wind + temperature, data = airPollution)
+stepUpSum1 = summary(stepUpModel1)
+stepUpModel = lm(oxidant ~ wind + humidity, data = airPollution)
+stepUpSum2 = summary(stepUpModel)
+stepUpModel = lm(oxidant ~ wind + insolation, data = airPollution)
+stepUpSum3 = summary(stepUpModel)
+```
+
+In next iteration, we add temperature, humidity, and insolation in this order. After adding these variables, we again calculate their $R^2$ values. The values we get in the same order are `r round(stepUpSum1$r.squared, 3)`, `r round(stepUpSum2$r.squared, 3)`, and `r round(stepUpSum3$r.squared, 3)`. Among these values, we chose to add temperature since it has the largest $R^2$ value.
+
+```{r, echo=FALSE}
+stepUpModel = lm(oxidant ~ wind + temperature + humidity, data = airPollution)
+stepUpSum4 = summary(stepUpModel)
+stepUpModel = lm(oxidant ~ wind + temperature + insolation, data = airPollution)
+stepUpSum5 = summary(stepUpModel)
+```
+In next iteration, we check addition of humidity and insolation in this order. The $R^2$ value we get from addition of these variables are `r round(stepUpSum4$r.squared, 3)`, `r round(stepUpSum5$r.squared, 3)`. Observations from these values showed insignificant changes, so we decided to use the model with 2 explanatory variables.
+
+In result, the equation we get is:
+
+$Y = `r stepUpModel1$coefficients[1]` + (`r stepUpModel1$coefficients[2]`) * wind + (`r stepUpModel1$coefficients[3]`) * temperature + error$
+
+### Section 3
+
+In this section, we are going to apply step-down approach to find multiple linear regression model. Below is the summary of the model with all variables except id and days are shown. In this approach, we take out the variable with the largest p-value until all variables' p-value are below $0.05$.
+
+```{r, echo=FALSE}
+multiModel = lm(oxidant ~ wind + temperature + humidity + insolation, data = airPollution)
+multiSum = summary(multiModel)
+round(multiSum$coefficients, 6)
+```
+
+Initially, we removed insolation from the model since it had the greatest p-value. Results of the re-evaluation of the model without the variable insolation can be seen below. From this figure, it is apparent that the variable humidity needs to be removed.
+
+```{r, echo=FALSE}
+multiModel = lm(oxidant ~ wind + temperature + humidity, data = airPollution)
+multiSum = summary(multiModel)
+round(multiSum$coefficients, 6)
+```
+
+After removing the variable humidity, the p-value of remaining variables are less than 0.05, so we keep these variables as our explanatory variables for the multiple regression model. Results of the remaining variables can be seen below.
+
+```{r, echo=FALSE}
+multiModel = lm(oxidant ~ wind + temperature, data = airPollution)
+multiSum = summary(multiModel)
+round(multiSum$coefficients, 6)
+```
+
+Finally, the model with this approach uses 2 variables; wind and temperature to estimate the variable oxidant.
+
+### Section 4
+
+From the models shown in Section 2 and 3, we ended up with same model. Our estimations for the parameters of the final model can be seen below.
+
+$Y = `r multiModel$coefficients[1]` + (`r multiModel$coefficients[2]`) * wind + (`r multiModel$coefficients[3]`) * temperature + error$
+
+### Section 5
+
+Normality of the residuals for the chosen model shown in Section 4 can be seen below. The figure on the left is the plot of fitted data against residuals.
+
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+qqnorm(residuals(multiModel))
+plot(fitted(multiModel), residuals(multiModel))
+```
+
+From the left figure, it can be assumed that the residuals are from a normal distribution. From the left figure, we do not observe any specific shapes. One suspicion we had was the possibility of collinearity of variables wind and temperature. We can test whether these two variables are collinear with the $R^2$ test. Scatter plot of wind and temperature can be seen below.
+
+```{r, echo=FALSE}
+par(mfrow=c(1,1))
+plot(wind ~ temperature, data = airPollution)
+
+mdl = lm(wind ~ temperature, data = airPollution)
+mdlsm = summary(mdl)
+```
+
+Since the correlation among wind and temperature is `r mdlsm$r.squared` which indicates it is insignificant by the $R^2$ test, we believe this model is appropriate.  
+
+## Question 7
+
+In this question, a linear regression model is investigated for the given dataset of crime expenses.
+
+```{r, echo=FALSE, fig.align='center'}
+expensesCrime = read.table("./data/expensescrime.txt", header = TRUE)
+pairs(expensesCrime[-1])
+expensesCrime[-1] = log(expensesCrime[-1])
+```
+
+From the pair-wise scatter plot above, the relationships among variables are not so obvious, therefore we took the $log$ of the variables which can be seen in the figure below.
+
+```{r, echo=FALSE, fig.align='center'}
+pairs(expensesCrime[-1])
+```
+
+From this figure, we can say; population, employment, and lawyer variables are colinear. We will keep this information when we are adding and removing variables. Colinear variables may cause overfitting, meaning they will perform well on the data set but poorly on other data. We also used $R^2$ test to check correlation among these variables.
+
+For this question, we chose to use step-down strategy to build a multilinear regression model. After checking pair-wise scatter plots, we inspected the data set for possible outliers. To detect possible influence points, we used Cook's distance. Results of Cook's distance on $log(Dataset)$ can be seen below.
+
+```{r, fig.align='center'}
+model = lm(expend ~ bad + crime + lawyers + employ + pop, data = expensesCrime[-1])
+round(cooks.distance(model), 3)
+plot(1:51, cooks.distance(model))
+```
+
+From the results, we can see that rows listed below have greater impact on the solution. In order to minimize the effects of outliers on our regression model, one point is removed from the data set which can be seen below.
+
+```{r, echo=FALSE}
+rows = round(cooks.distance(model), 3) > 1
+expensesCrime[rows,]
+```
+
+After we inspected the data set about collinearity and influence points, we can now start to construct our model. As shown above, we started with a model using all explanatory variables. We then eliminated variables with high p-values until none of the variables have p-value greater than $0.05$. The model we ended up with this approach is shown below.
+
+```{r}
+newData = expensesCrime[!rows, ]
+model = lm(expend ~ crime + lawyers + employ, data = newData)
+summary(model)
+```
+
+The equation of the model can be seen below:
+
+$Y = `r model$coefficients[1]` + (`r model$coefficients[2]` * crime) + (`r model$coefficients[3]` * lawyers) + (`r model$coefficients[4]` * employ)$
+
+```{r, echo=FALSE}
+modelA = lm(employ ~ lawyers, data = newData)
+sumA = summary(modelA)
+```
+
+At the beginning of the analysis we suspected that the variables lawyers and employ may be colinear. To test this suspicion, we employed an $R^2$ test. The $R^2$ value of the test is `r sumA$r.squared`, therefore using both of these variables are dangerous. We choose to use the variable employ instead of lawyers.
+
+The final multi regression model we ended up with can be seen below with the corresponding equation following.
+
+```{r}
+model = lm(expend ~ crime + employ, data = newData)
+summary(model)
+```
+
+$Y = `r model$coefficients[1]` + (`r model$coefficients[2]` * crime) + (`r model$coefficients[3]` * employ)$
+
+Finally, residuals of the model are investigated. QQ-Plot and the scatterplot of fitted values vs residuals can be seen below.
+
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+qqnorm(residuals(model))
+plot(fitted(model), residuals(model))
+```
+
+The first graph shows that the residuals are not from a standard normal distribution. Nonetheless, they are from a normal distribution since it still forms a line. Observations on the scatterplot do not yield any particular shape. Moreover, residual scatter plots shown below demonstrate fairly random orders indicating a the current model is a good fit for the problem.
+
+```{r, echo=FALSE, fig.align='center'}
+par(mfrow=c(1,2))
+plot(newData$crime, residuals(model),  xlab = "Crime", ylab="Residuals")
+plot(newData$employ, residuals(model), ylab="Residuals", xlab = "Employ")
+
+par(mfrow=c(1,2))
+plot(newData$expend, residuals(model), ylab="Residuals", xlab = "Expend")
+
+estimate = function(x, y) {
+  val = model$coefficients[1] + model$coefficients[2] * x + model$coefficients[2] * y
+  return(val)
+}
+
+plot(estimate(newData$crime, newData$employ), residuals(model), ylab="Residuals", xlab = "Expend Est")
+```
+
